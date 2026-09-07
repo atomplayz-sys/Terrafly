@@ -1,0 +1,11 @@
+flowchart TD
+  R[Georeferenced Relative] --> X{Reference exact grid or separate GCPs?}
+  X -->|No| K[Reject; metric files locked]
+  X -->|Yes| F[Robust positive affine fit]
+  F --> G{Positive scale; span; inliers; 2-axis coverage; held-out RMSE; R2}
+  G -->|Any fail| K
+  G -->|All pass| M[Metric Calibrated]
+  M --> O[metric_surface.npy + tif + metric grid]
+  G --> P[calibration_report + residual evidence]
+  K --> P
+

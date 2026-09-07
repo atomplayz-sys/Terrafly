@@ -1,0 +1,501 @@
+import { useEffect, useMemo, useState } from "react";
+import { artifactUrl, calibrateWithReference, createJob, createTerrainJob, deleteJob, getJob } from "./api";
+import { SurfaceViewer } from "./SurfaceViewer";
+import { projectedDistanceMetres } from "./surfaceGeometry";
+import type { InspectedPoint } from "./surfaceGeometry";
+import type { Artifact, Job } from "./types";
+import "./styles.css";
+
+const stages = ["validation", "preprocessing", "inference", "meshing", "complete"] as const;
+
+const stageLabels: Record<string, string> = {
+  queued: "Queued",
+  validation: "Checking file",
+  preprocessing: "Preparing image",
+  inference: "Estimating structure",
+  meshing: "Building viewer",
+  complete: "Complete",
+  failed: "Stopped",
+};
+
+function ContourMark() {
+  return (
+    <svg className="contour-mark" viewBox="0 0 38 38" aria-hidden="true">
+      <path d="M5 20c1-7 6-12 13-13 8-1 15 4 15 12 0 7-5 13-13 14-7 1-14-5-15-13Z" />
+      <path d="M10 20c1-4 4-8 9-8 5-1 10 2 10 7 0 5-4 9-9 9s-9-3-10-8Z" />
+      <path d="M15 20c0-2 2-4 5-4 2 0 4 1 4 4 0 2-2 4-4 4-3 0-5-2-5-4Z" />
+    </svg>
+  );
+}
+
+function fileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function metric(value: number | undefined, digits = 3) {
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "—";
+}
+
+export default function App() {
+  const [workflow, setWorkflow] = useState<"photo" | "terrain">("terrain");
+  const [file, setFile] = useState<File | null>(null);
+  const [demFile, setDemFile] = useState<File | null>(null);
+  const [terrainSource, setTerrainSource] = useState("");
+  const [terrainDatum, setTerrainDatum] = useState("");
+  const [job, setJob] = useState<Job | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [points, setPoints] = useState<InspectedPoint[]>([]);
+  const [referenceFile, setReferenceFile] = useState<File | null>(null);
+  const [sourceDescription, setSourceDescription] = useState("");
+  const [verticalDatum, setVerticalDatum] = useState("");
+  const [maxRmse, setMaxRmse] = useState("2");
+  const [calibrating, setCalibrating] = useState(false);
+  const [calibrationError, setCalibrationError] = useState<string | null>(null);
+  const localPreview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+
+  useEffect(() => () => { if (localPreview) URL.revokeObjectURL(localPreview); }, [localPreview]);
+
+  useEffect(() => {
+    if (!job || job.status === "complete" || job.status === "failed") return undefined;
+    const timer = window.setInterval(async () => {
+      try {
+        const current = await getJob(job.job_id);
+        setJob(current);
+        if (current.status === "complete" || current.status === "failed") setBusy(false);
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : "Progress check failed.");
+        setBusy(false);
+      }
+    }, 550);
+    return () => window.clearInterval(timer);
+  }, [job]);
+
+  function selectFile(nextFile: File | null) {
+    setFile(nextFile);
+    setJob(null);
+    setError(null);
+    setPoints([]);
+    setReferenceFile(null);
+    setSourceDescription("");
+    setVerticalDatum("");
+    setMaxRmse("2");
+    setCalibrationError(null);
+  }
+
+  function selectWorkflow(nextWorkflow: "photo" | "terrain") {
+    setWorkflow(nextWorkflow);
+    setFile(null);
+    setDemFile(null);
+    setTerrainSource("");
+    setTerrainDatum("");
+    setJob(null);
+    setError(null);
+    setPoints([]);
+  }
+
+  async function clearResult() {
+    if (!job || job.status !== "complete") return;
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteJob(job.job_id);
+      setJob(null);
+      setPoints([]);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not clear this result.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function generate() {
+    if (!file || (workflow === "terrain" && (!demFile || !terrainSource.trim() || !terrainDatum.trim()))) return;
+    setBusy(true);
+    setError(null);
+    setJob(null);
+    setPoints([]);
+    try {
+      setJob(workflow === "terrain"
+        ? await createTerrainJob(file, demFile!, terrainSource.trim(), terrainDatum.trim())
+        : await createJob(file));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Generation failed.");
+      setBusy(false);
+    }
+  }
+
+  async function evaluateCalibration() {
+    if (!job || !referenceFile || !sourceDescription.trim() || !verticalDatum.trim()) return;
+    const threshold = Number(maxRmse);
+    if (!Number.isFinite(threshold) || threshold <= 0) {
+      setCalibrationError("Enter a positive held-out RMSE limit in metres.");
+      return;
+    }
+    setCalibrating(true);
+    setCalibrationError(null);
+    try {
+      setJob(await calibrateWithReference(
+        job.job_id,
+        referenceFile,
+        sourceDescription.trim(),
+        verticalDatum.trim(),
+        threshold,
+      ));
+    } catch (reason) {
+      setCalibrationError(reason instanceof Error ? reason.message : "Calibration could not be evaluated.");
+    } finally {
+      setCalibrating(false);
+    }
+  }
+
+  const complete = job?.status === "complete";
+  const artifact = (name: string) => complete ? artifactUrl(job.job_id, name) : "#";
+  const artifactRecord = (name: string): Artifact | undefined => job?.artifacts.find((item) => item.name === name);
+  const currentStage = stages.indexOf((job?.stage ?? "") as (typeof stages)[number]);
+  const isSingleBand = job?.input.mode === "L" || job?.input.bands === 1;
+  const isTiff = file ? /\.tiff?$/i.test(file.name) : false;
+  const metricAllowed = job?.calibration.metric_output_allowed === true;
+  const sourceDemMode = job?.scientific_state === "Metric Source DEM" || job?.input.workflow === "source_dem_terrain";
+  const terrainReady = Boolean(file && demFile && terrainSource.trim() && terrainDatum.trim());
+  const evaluation = job?.calibration.evaluation;
+  const firstMetricElevation = points[0]?.metricElevationM;
+  const secondMetricElevation = points[1]?.metricElevationM;
+  const metricHeightDifference =
+    typeof firstMetricElevation === "number" && typeof secondMetricElevation === "number"
+      ? Math.abs(secondMetricElevation - firstMetricElevation)
+      : null;
+  const transform = job?.geospatial?.transform;
+  const horizontalUnits = String(job?.geospatial?.horizontal_units ?? "").toLowerCase();
+  const horizontalDistanceM = (() => {
+    if (points.length !== 2 || !Array.isArray(transform) || !job) return null;
+    return projectedDistanceMetres(
+      transform.map(Number),
+      horizontalUnits,
+      [Number(job.input.height), Number(job.input.width)],
+      points[0],
+      points[1],
+    );
+  })();
+  const slopeDegrees =
+    metricHeightDifference !== null && horizontalDistanceM !== null && horizontalDistanceM > 0
+      ? Math.atan2(metricHeightDifference, horizontalDistanceM) * 180 / Math.PI
+      : null;
+
+  return (
+    <main className="app-shell">
+      <nav className="topbar" aria-label="TerraFly project">
+        <div className="wordmark"><ContourMark /><span>TerraFly</span></div>
+        <span className="project-id">SIH 2026 / PS 26175</span>
+      </nav>
+
+      <header className="intro">
+        <div className="intro-copy">
+          <p className="kicker">Surface analysis workbench</p>
+          <h1>Explore terrain from imagery and elevation evidence.</h1>
+          <p>Use a measured DEM for credible mountains, or use photo-only AI for an explicitly relative experiment. Every run remains traceable.</p>
+        </div>
+        <aside className="scope-note" aria-label="Scientific output scope">
+          <span>Output scope</span>
+          <strong>{sourceDemMode ? "Source DEM terrain · metres" : metricAllowed ? "Metric calibrated · metres" : workflow === "terrain" ? "Measured terrain mode" : "Photo AI · relative 0–1"}</strong>
+          <p>{sourceDemMode ? "Geometry comes from the named DEM; the optical GeoTIFF supplies texture. Alignment is checked and recorded." : metricAllowed ? "Independent evidence passed the held-out gate. Point analysis reports calibrated elevation, height difference, and slope." : workflow === "terrain" ? "Recommended for mountains. Supply a georeferenced optical GeoTIFF and a DEM covering the same area." : "A normal image cannot establish elevation in metres. Photo-only output remains relative until valid calibration passes."}</p>
+        </aside>
+      </header>
+
+      <div className="process-line" aria-label="Processing method">
+        {workflow === "terrain" ? <><span>Optical GeoTIFF</span><i>+</i><span>Source DEM</span><i>→</i><span>Aligned metric terrain</span><i>→</i><span>3D analysis</span></> : <><span>Optical image</span><i>→</i><span>Depth backbone</span><i>→</i><span>Relative / calibrated DSM</span><i>→</i><span>3D analysis</span></>}
+      </div>
+
+      <section className="workbench" aria-labelledby="input-title">
+        <div className="section-heading">
+          <div><p className="section-label">New analysis</p><h2 id="input-title">Choose a scientifically clear workflow</h2></div>
+          <p>{workflow === "terrain" ? "Two georeferenced GeoTIFFs · same area of interest" : "PNG, JPG/JPEG, or GeoTIFF · maximum 25 MB"}</p>
+        </div>
+
+        <div className="workflow-switch" aria-label="Analysis workflow">
+          <button type="button" className={workflow === "terrain" ? "active" : ""} aria-pressed={workflow === "terrain"} onClick={() => selectWorkflow("terrain")}>
+            <span>Recommended</span><strong>DEM Terrain</strong><small>Measured heights · best for mountains</small>
+          </button>
+          <button type="button" className={workflow === "photo" ? "active" : ""} aria-pressed={workflow === "photo"} onClick={() => selectWorkflow("photo")}>
+            <span>Experimental</span><strong>Photo AI</strong><small>One image · relative shape only</small>
+          </button>
+        </div>
+
+        <div className="input-layout">
+          {workflow === "photo" ? <label
+            className={`upload-area ${dragging ? "dragging" : ""} ${file ? "has-file" : ""}`}
+            htmlFor="scene-upload"
+            onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
+            onDragOver={(event) => event.preventDefault()}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragging(false);
+              selectFile(event.dataTransfer.files?.[0] ?? null);
+            }}
+          >
+            <input
+              id="scene-upload"
+              aria-label="Choose an image"
+              type="file"
+              accept=".png,.jpg,.jpeg,.tif,.tiff,image/png,image/jpeg,image/tiff"
+              onChange={(event) => selectFile(event.target.files?.[0] ?? null)}
+            />
+            {file && localPreview && !isTiff ? <img src={localPreview} alt="Selected scene preview" /> : <ContourMark />}
+            <div>
+              <strong>{file ? file.name : "Choose a file or drop it here"}</strong>
+              <span>{file ? `${fileSize(file.size)} · ready to analyse` : "Your file stays on this computer."}</span>
+            </div>
+          </label> : <div className="terrain-inputs">
+            <label className={`terrain-picker ${file ? "has-file" : ""}`}>
+              <span>1 · Optical texture</span>
+              <input aria-label="Choose optical GeoTIFF" type="file" accept=".tif,.tiff,image/tiff" onChange={(event) => selectFile(event.target.files?.[0] ?? null)} />
+              <strong>{file?.name ?? "Choose georeferenced optical GeoTIFF"}</strong>
+              <small>{file ? `${fileSize(file.size)} · texture ready` : "RGB imagery with a CRS and map extent"}</small>
+            </label>
+            <label className={`terrain-picker ${demFile ? "has-file" : ""}`}>
+              <span>2 · Elevation geometry</span>
+              <input aria-label="Choose source DEM" type="file" accept=".tif,.tiff,image/tiff" onChange={(event) => { setDemFile(event.target.files?.[0] ?? null); setJob(null); setError(null); }} />
+              <strong>{demFile?.name ?? "Choose single-band DEM GeoTIFF"}</strong>
+              <small>{demFile ? `${fileSize(demFile.size)} · elevation ready` : "TerraFly aligns it to the optical grid"}</small>
+            </label>
+          </div>}
+
+          <div className="run-panel">
+            <div className="run-summary">
+              <span>{job ? stageLabels[job.stage] ?? job.stage : "Ready"}</span>
+              <strong>{job ? `${job.progress}%` : workflow === "terrain" ? "Metric source" : "Relative mode"}</strong>
+            </div>
+            <div className="progress-track" aria-label="Analysis progress"><span style={{ width: `${job?.progress ?? 0}%` }} /></div>
+            <ol className="stage-line">
+              {stages.map((stage, index) => <li key={stage} className={currentStage >= index ? "done" : ""}>{workflow === "terrain" && stage === "inference" ? "Aligning DEM" : stageLabels[stage]}</li>)}
+            </ol>
+            {workflow === "terrain" && <div className="terrain-fields">
+              <label><span>DEM source</span><input aria-label="DEM source" value={terrainSource} onChange={(event) => setTerrainSource(event.target.value)} placeholder="e.g. NASA SRTMGL1 v3" /></label>
+              <label><span>Vertical datum</span><input aria-label="Terrain vertical datum" value={terrainDatum} onChange={(event) => setTerrainDatum(event.target.value)} placeholder="e.g. EGM96 orthometric" /></label>
+            </div>}
+            <button className="primary-action" type="button" disabled={(workflow === "terrain" ? !terrainReady : !file) || busy} onClick={generate}>
+              {busy ? "Analysing scene…" : workflow === "terrain" ? "Build measured terrain" : "Generate relative surface"}
+            </button>
+            <p className="action-note">{workflow === "terrain" ? "The DEM supplies elevation in metres; imagery supplies colour. Reprojection is recorded and never described as added resolution." : "Photo AI estimates relative shape. Passing calibration creates separate metric evidence; display exaggeration never changes either source."}</p>
+            {error && <div className="error" role="alert">{error}</div>}
+            {job?.status === "failed" && <div className="error" role="alert">{job.error}</div>}
+          </div>
+        </div>
+      </section>
+
+      {complete && <>
+        <section className="result-section" aria-labelledby="result-title">
+          <div className="section-heading result-heading">
+            <div><p className="section-label">Completed run</p><h2 id="result-title">{sourceDemMode ? "Measured terrain analysis" : metricAllowed ? "Metric DSM analysis" : "Relative surface analysis"}</h2></div>
+            <div className="result-actions">
+              <div className="result-state"><strong>{job.scientific_state}</strong><span>{sourceDemMode ? "Point measurements use source DEM metres" : metricAllowed ? "Point measurements use calibrated metres" : "Point measurements use relative units"}</span></div>
+              <button className="quiet-action" type="button" disabled={busy} onClick={clearResult}>Clear result</button>
+            </div>
+          </div>
+
+          {isSingleBand && <div className="domain-note" role="note">
+            <strong>Single-band input detected</strong>
+            <span>This file was repeated into RGB for compatibility. Thermal/TIR imagery is outside this pretrained model's validated optical-image domain, so treat this run as a software demonstration—not scientific validation.</span>
+          </div>}
+
+          <div className="analysis-layout">
+            <div className="viewer-column">
+              <SurfaceViewer
+                gridUrl={artifactRecord("display_grid") ? artifact("display_grid") : artifact("surface_grid")}
+                analysisGridUrl={artifact("surface_grid")}
+                textureUrl={artifact("texture")}
+                measurementGridUrl={metricAllowed && artifactRecord("metric_grid") ? artifact("metric_grid") : undefined}
+                structureLayerUrl={artifactRecord("structure_layer") ? artifact("structure_layer") : undefined}
+                terrainMode={sourceDemMode}
+                onPointsChange={setPoints}
+              />
+            </div>
+            <aside className="result-inspector">
+              <div className="comparison-pair">
+                <figure><img src={artifact("texture")} alt="Uploaded scene" /><figcaption>Input scene</figcaption></figure>
+                <figure><img src={artifact("preview")} alt="Colourized elevation surface" /><figcaption>{sourceDemMode ? "Elevation map" : "Relative map"}</figcaption></figure>
+              </div>
+              <div className="interpretation">
+                <h3>How to read this</h3>
+                <p>{sourceDemMode ? "The 3D shape comes from the uploaded DEM and the photograph is only its texture. Click two terrain points to compare source elevation, vertical difference, horizontal distance, and slope." : metricAllowed ? "The shape uses normalized display geometry, while clicked points read the validated metric DSM. Select ground as A and a roof or terrain feature as B to estimate their vertical difference." : "The colour map and 3D shape show relative ordering and local structure. They do not provide absolute terrain height, building height, or elevation."}</p>
+                <p>{sourceDemMode ? "Mountain-preserving mode disables AI roof cleanup and smoothing. Display normalization and vertical exaggeration never alter the downloadable metre values." : "The display mesh uses edge-aware cleanup and neutral shading on steep faces, so roofs stay calmer and the aerial image is not stretched into wall-like drips. Point values still come from the untouched analysis grid."}</p>
+                {artifactRecord("structure_layer") && <p><strong>Structures</strong> adds optional Bhuvan-style extrusions from conservative local-height candidates. It is a visual reconstruction layer, may include trees or miss roofs, and never changes the DSM.</p>}
+              </div>
+              <div className="point-inspection" aria-live="polite">
+                <div><h3>{metricAllowed ? "Height and slope analysis" : "Point comparison"}</h3><span>{metricAllowed ? "metres" : "relative units"}</span></div>
+                {points.length === 0 ? <p>{metricAllowed ? "Click ground as point A, then a roof or terrain feature as point B." : "Click the 3D surface to set point A, then point B."}</p> : <>
+                  <ol>
+                    {points.map((point) => <li key={point.label} className={`point-${point.label.toLowerCase()}`}>
+                      <strong>{point.label}</strong>
+                      <span>{metricAllowed && typeof point.metricElevationM === "number" ? `${point.metricElevationM.toFixed(2)} m` : point.relativeValue.toFixed(3)}</span>
+                      <small>{metricAllowed ? `relative ${point.relativeValue.toFixed(3)} · ` : ""}pixel {point.column}, {point.row} · x {(point.xFraction * 100).toFixed(1)}% · y {(point.yFraction * 100).toFixed(1)}%</small>
+                    </li>)}
+                  </ol>
+                  {points.length === 2 && (metricAllowed ? <p className="point-difference">
+                    Height difference <strong>{metricHeightDifference === null ? "NoData" : `${metricHeightDifference.toFixed(2)} m`}</strong>
+                    {horizontalDistanceM !== null && <> · horizontal <strong>{horizontalDistanceM.toFixed(2)} m</strong></>}
+                    {slopeDegrees !== null && <> · slope <strong>{slopeDegrees.toFixed(2)}°</strong></>}
+                  </p> : <p className="point-difference">Absolute difference <strong>{Math.abs(points[1].relativeValue - points[0].relativeValue).toFixed(3)}</strong></p>)}
+                </>}
+              </div>
+              <details className="run-details">
+                <summary>Inspect run provenance</summary>
+                <dl>
+                  <div><dt>{sourceDemMode ? "Geometry" : "Model"}</dt><dd>{String(job.model.checkpoint ?? "Unavailable")}</dd></div>
+                  <div><dt>Revision</dt><dd className="hash">{String(job.model.revision ?? "Unavailable")}</dd></div>
+                  <div><dt>Device</dt><dd>{String(job.model.device ?? "Unavailable")}</dd></div>
+                  <div><dt>Inference</dt><dd>{String(job.configuration.inference_mode ?? "single_pass").replace("_", " ")}{Number(job.configuration.tile_count ?? 1) > 1 ? ` · ${String(job.configuration.tile_count)} tiles` : ""}</dd></div>
+                  <div><dt>Input hash</dt><dd className="hash">{String(job.input.sha256)}</dd></div>
+                  <div><dt>CRS</dt><dd>{String(job.geospatial?.crs ?? "Not supplied")}</dd></div>
+                </dl>
+              </details>
+            </aside>
+          </div>
+        </section>
+
+        {job.geospatial && !sourceDemMode && <section className="calibration-section" aria-labelledby="calibration-title">
+          <div className="section-heading calibration-heading">
+            <div><p className="section-label">Vertical evidence gate</p><h2 id="calibration-title">Metric calibration</h2></div>
+            <span className={`gate-status gate-${job.calibration.status}`}>
+              {job.calibration.status === "passed" ? "Passed" : job.calibration.status === "rejected" ? "Rejected" : "Locked"}
+            </span>
+          </div>
+          <div className="calibration-layout">
+            <div className="calibration-copy">
+              <h3>Use an independently sourced, pixel-aligned DSM</h3>
+              <p>It must have the exact same CRS, dimensions, and pixel grid as this input. TerraFly fits scale and offset on one spatial set, then judges the result on separate held-out pixels.</p>
+              <dl className="alignment-facts">
+                <div><dt>Input CRS</dt><dd>{String(job.geospatial.crs)}</dd></div>
+                <div><dt>Input grid</dt><dd>{String(job.input.width)} × {String(job.input.height)} pixels</dd></div>
+                <div><dt>Viewer</dt><dd>Normalized display geometry + calibrated metric point analysis after a pass</dd></div>
+              </dl>
+            </div>
+            <div className="calibration-form">
+              <label className="reference-picker">
+                <span>Reference DSM · GeoTIFF</span>
+                <input aria-label="Reference DSM" type="file" accept=".tif,.tiff,image/tiff" onChange={(event) => { setReferenceFile(event.target.files?.[0] ?? null); setCalibrationError(null); }} />
+                <strong>{referenceFile?.name ?? "Choose aligned DSM"}</strong>
+              </label>
+              <label><span>Evidence source</span><input aria-label="Evidence source" value={sourceDescription} onChange={(event) => setSourceDescription(event.target.value)} placeholder="Agency, survey, product, and date" /></label>
+              <div className="calibration-fields">
+                <label><span>Vertical datum</span><input aria-label="Vertical datum" value={verticalDatum} onChange={(event) => setVerticalDatum(event.target.value)} placeholder="e.g. EGM96 orthometric" /></label>
+                <label><span>Maximum held-out RMSE · m</span><input aria-label="Maximum held-out RMSE" type="number" min="0.001" step="0.1" value={maxRmse} onChange={(event) => setMaxRmse(event.target.value)} /></label>
+              </div>
+              <button className="primary-action" type="button" disabled={calibrating || !referenceFile || !sourceDescription.trim() || !verticalDatum.trim()} onClick={evaluateCalibration}>
+                {calibrating ? "Evaluating evidence…" : "Evaluate and calibrate"}
+              </button>
+              {calibrationError && <div className="error" role="alert">{calibrationError}</div>}
+            </div>
+          </div>
+
+          {job.calibration.status !== "not_requested" && <div className={`gate-result ${metricAllowed ? "gate-pass" : "gate-fail"}`} aria-live="polite">
+            <div><span>Decision</span><strong>{metricAllowed ? "Metric export unlocked" : "Metric export remains locked"}</strong><p>{job.calibration.reason}</p></div>
+            {evaluation && <dl>
+              <div><dt>Held-out RMSE</dt><dd>{metric(evaluation.rmse_m)} m</dd></div>
+              <div><dt>MAE</dt><dd>{metric(evaluation.mae_m)} m</dd></div>
+              <div><dt>Bias</dt><dd>{metric(evaluation.bias_m)} m</dd></div>
+              <div><dt>R²</dt><dd>{metric(evaluation.r_squared)}</dd></div>
+              <div><dt>Fit scale</dt><dd>{metric(job.calibration.fit?.scale_m_per_relative_unit)} m / relative unit</dd></div>
+              <div><dt>Vertical datum</dt><dd>{job.calibration.evidence?.vertical_datum ?? "—"}</dd></div>
+            </dl>}
+          </div>}
+        </section>}
+
+        <section className="evidence-section" aria-labelledby="evidence-title">
+          <div className="section-heading">
+            <div><p className="section-label">Reproducible outputs</p><h2 id="evidence-title">Evidence bundle</h2></div>
+            <p>Only working outputs are shown. Each file has one defined purpose.</p>
+          </div>
+          <div className="evidence-list">
+            <a href={artifact("preview")} download>
+              <span><strong>{artifactRecord("preview")?.filename ?? "relative_preview.png"}</strong><small>Human-readable quality check; never used as numeric ground truth.</small></span>
+              <b>Download · {fileSize(artifactRecord("preview")?.bytes ?? 0)}</b>
+            </a>
+            <a href={artifact("numeric_surface")} download>
+              <span><strong>{artifactRecord("numeric_surface")?.filename ?? "relative_surface.npy"}</strong><small>{sourceDemMode ? "Normalized display/analysis companion derived from the DEM; metric measurements remain in the separate source DEM artifacts." : "Canonical normalized float32 relative heights used for analysis and later calibration; never overwritten by display cleanup."}</small></span>
+              <b>Download · {fileSize(artifactRecord("numeric_surface")?.bytes ?? 0)}</b>
+            </a>
+            {artifactRecord("display_grid") && <a href={artifact("display_grid")} download>
+              <span><strong>{artifactRecord("display_grid")?.filename}</strong><small>{sourceDemMode ? "Mountain-faithful normalized mesh grid; AI roof cleanup, smoothing, and neutral-wall substitution are disabled." : "Display-only mesh grid after RGB-guided smoothing, rooftop flattening, outlier cleanup, and an extreme-slope safety cap."}</small></span>
+              <b>Download · {fileSize(artifactRecord("display_grid")?.bytes ?? 0)}</b>
+            </a>}
+            {artifactRecord("raw_model_output") && <a href={artifact("raw_model_output")} download>
+              <span><strong>{artifactRecord("raw_model_output")?.filename}</strong><small>Untouched model prediction saved before normalization or height-convention conversion.</small></span>
+              <b>Download · {fileSize(artifactRecord("raw_model_output")?.bytes ?? 0)}</b>
+            </a>}
+            {artifactRecord("source_dem") && <a href={artifact("source_dem")} download>
+              <span><strong>{artifactRecord("source_dem")?.filename}</strong><small>Original uploaded DEM preserved byte-for-byte as the stated elevation source.</small></span>
+              <b>Download · {fileSize(artifactRecord("source_dem")?.bytes ?? 0)}</b>
+            </a>}
+            {artifactRecord("source_dem_aligned") && <a href={artifact("source_dem_aligned")} download>
+              <span><strong>{artifactRecord("source_dem_aligned")?.filename}</strong><small>Float32 DEM array after alignment to the optical grid; NoData remains explicit.</small></span>
+              <b>Download · {fileSize(artifactRecord("source_dem_aligned")?.bytes ?? 0)}</b>
+            </a>}
+            {artifactRecord("terrain_alignment_report") && <a href={artifact("terrain_alignment_report")} download>
+              <span><strong>{artifactRecord("terrain_alignment_report")?.filename}</strong><small>Source/output grids, reprojection method, coverage, display normalization, hashes, datum, and accuracy disclaimer.</small></span>
+              <b>Download · {fileSize(artifactRecord("terrain_alignment_report")?.bytes ?? 0)}</b>
+            </a>}
+            {artifactRecord("height_diagnostics") && <a href={artifact("height_diagnostics")} download>
+              <span><strong>{artifactRecord("height_diagnostics")?.filename}</strong><small>{sourceDemMode ? "Machine-readable source/display separation, metre range, display normalization, and proof that AI cleanup was disabled." : "Machine-readable convention, canonical/display source separation, cleanup counts and thresholds, and global-tilt warning."}</small></span>
+              <b>Download · {fileSize(artifactRecord("height_diagnostics")?.bytes ?? 0)}</b>
+            </a>}
+            {artifactRecord("structure_layer") && <a href={artifact("structure_layer")} download>
+              <span><strong>{artifactRecord("structure_layer")?.filename}</strong><small>Optional footprint extrusions reconstructed from local height contrast; separate from and never written into the DSM.</small></span>
+              <b>Download · {fileSize(artifactRecord("structure_layer")?.bytes ?? 0)}</b>
+            </a>}
+            <a href={artifact("glb_mesh")} download>
+              <span><strong>{artifactRecord("glb_mesh")?.filename ?? "relative_surface.glb"}</strong><small>{sourceDemMode ? "Portable source-DEM terrain mesh with embedded optical texture across real slopes, UVs, smooth normals, and lit PBR material." : "Portable relative display mesh with embedded source-photo texture, UVs, smooth normals, lit PBR roof/ground material, and neutral steep faces."}</small></span>
+              <b>Download · {fileSize(artifactRecord("glb_mesh")?.bytes ?? 0)}</b>
+            </a>
+            <a href={artifact("manifest")} download>
+              <span><strong>{artifactRecord("manifest")?.filename ?? "job_manifest.json"}</strong><small>Audit record containing input hash, model revision, device, warnings, and artifact hashes.</small></span>
+              <b>Download · {fileSize(artifactRecord("manifest")?.bytes ?? 0)}</b>
+            </a>
+            {artifactRecord("calibration_report") && <a href={artifact("calibration_report")} download>
+              <span><strong>{artifactRecord("calibration_report")?.filename}</strong><small>Calibration evidence, fitted scale and offset, held-out metrics, gate thresholds, and final decision.</small></span>
+              <b>Download · {fileSize(artifactRecord("calibration_report")?.bytes ?? 0)}</b>
+            </a>}
+            {artifactRecord("metric_geotiff") && <a href={artifact("metric_geotiff")} download>
+              <span><strong>{artifactRecord("metric_geotiff")?.filename}</strong><small>Float32 {sourceDemMode ? "source DEM elevation aligned to the optical grid" : "calibrated elevation"} with CRS, affine transform, vertical datum, and metre units.</small></span>
+              <b>Download · {fileSize(artifactRecord("metric_geotiff")?.bytes ?? 0)}</b>
+            </a>}
+            {artifactRecord("metric_surface") && <a href={artifact("metric_surface")} download>
+              <span><strong>{artifactRecord("metric_surface")?.filename}</strong><small>Lossless float32 {sourceDemMode ? "source DEM" : "calibrated"} elevation array in metres; separate from normalized display geometry.</small></span>
+              <b>Download · {fileSize(artifactRecord("metric_surface")?.bytes ?? 0)}</b>
+            </a>}
+            {artifactRecord("metric_grid") && <a href={artifact("metric_grid")} download>
+              <span><strong>{artifactRecord("metric_grid")?.filename}</strong><small>{sourceDemMode ? "Source DEM" : "Calibrated"} metre samples on the exact 3D viewer grid for elevation, height-difference, and slope inspection.</small></span>
+              <b>Download · {fileSize(artifactRecord("metric_grid")?.bytes ?? 0)}</b>
+            </a>}
+            {artifactRecord("error_geotiff") && <a href={artifact("error_geotiff")} download>
+              <span><strong>{artifactRecord("error_geotiff")?.filename}</strong><small>Spatial residual map: calibrated estimate minus aligned reference DSM, in metres.</small></span>
+              <b>Download · {fileSize(artifactRecord("error_geotiff")?.bytes ?? 0)}</b>
+            </a>}
+          </div>
+          <p className={`metric-lock ${metricAllowed ? "metric-open" : ""}`}>{sourceDemMode ? "Metric GeoTIFF and point analysis come directly from the named DEM. TerraFly checked alignment, preserved provenance, and kept display normalization separate from measurements." : metricAllowed ? "Metric GeoTIFF and metric 3D point analysis are available because the documented held-out gate passed. Geometry remains normalized only for stable display." : job.calibration.status === "rejected" ? "The submitted evidence was retained with its rejection report; no metric elevation file was produced." : "Metric GeoTIFF is intentionally absent. Submit valid vertical evidence above to evaluate the gate."}</p>
+        </section>
+
+        {job.warnings.length > 0 && <section className="warning-section">
+          <h3>Scientific notes for this run</h3>
+          <ul>{job.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+        </section>}
+      </>}
+
+      <details className="method-section">
+        <summary>What happens inside TerraFly?</summary>
+        <div>
+          <p><strong>1. Validate.</strong> Check filename, format, size, pixel count, and geospatial metadata before decoding.</p>
+          <p><strong>2. Choose evidence.</strong> DEM Terrain uses supplied metric elevation; Photo AI uses Depth Anything V2 for relative shape.</p>
+          <p><strong>3. Align and inspect.</strong> DEMs are aligned transparently; display geometry stays separate from numeric measurements.</p>
+          <p><strong>4. Export honestly.</strong> Source DEM metres remain attributed. AI-derived metres require independent held-out calibration.</p>
+        </div>
+      </details>
+
+      <footer><span>TerraFly · Final verified release</span><span>Local processing · held-out quality gates · reproducible outputs</span></footer>
+    </main>
+  );
+}

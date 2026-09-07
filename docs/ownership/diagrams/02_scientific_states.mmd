@@ -1,0 +1,9 @@
+flowchart TD
+  P[PNG/JPG] --> R[Relative 0..1]
+  G[Georeferenced optical GeoTIFF] --> GR[Georeferenced Relative]
+  GR --> E{Independent reference/GCP gates}
+  E -->|Pass| MC[Metric Calibrated]
+  E -->|Reject| GR
+  O[Optical GeoTIFF] --> D{Named metre DEM overlaps}
+  D -->|Valid| MS[Metric Source DEM]
+

@@ -1,0 +1,7 @@
+flowchart TD
+  A[Flow A: Photo submit] --> A1[App -> api.ts -> POST /api/jobs -> pipeline -> adapter -> artifacts -> poll -> viewer]
+  B[Flow B: DEM submit] --> B1[App -> terrain POST -> terrain worker -> alignment -> metric artifacts -> viewer]
+  C[Flow C: Calibration] --> C1[App -> calibration POST -> gates -> report -> pass files or locked rejection]
+  D[Flow D: Download] --> D1[Evidence link -> safe artifact route -> contained file -> SHA-256]
+  E[Flow E: Click] --> E1[Raycaster -> UV/pixel -> bilinear analysis-grid value -> App comparison]
+

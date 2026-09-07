@@ -1,0 +1,16 @@
+flowchart LR
+  I[PNG/JPG/GeoTIFF] --> V[Safe validation + RGB]
+  V --> L[Load DAV2 Large exact revision]
+  L --> Q{Large image?}
+  Q -->|No| P[CUDA/autocast prediction]
+  Q -->|Yes| T[Bounded overlap tiles]
+  T --> A[Positive affine overlap alignment]
+  A --> B[Feather blend raw field]
+  P --> R[raw_model_output.npy]
+  B --> R
+  R --> C[Declared direction + one robust normalization]
+  C --> S[relative_surface.npy]
+  S --> D[Display-only cleanup]
+  D --> G[GLB/viewer]
+  S --> E[Provenance + possible calibration]
+

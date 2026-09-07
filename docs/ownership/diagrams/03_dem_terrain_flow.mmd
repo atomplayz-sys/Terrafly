@@ -1,0 +1,12 @@
+flowchart LR
+  A[Optical GeoTIFF] --> V[Validate CRS/transform/bands]
+  D[Source DEM] --> W[Validate units/NoData/CRS]
+  V --> O[Check overlap]
+  W --> O
+  O --> R[Reproject/resample DEM to optical grid]
+  R --> M[Preserve metric arrays and NoData]
+  M --> N[Separate display normalization]
+  N --> G[Texture + normals + UV + GLB]
+  M --> T[Metric GeoTIFF + analysis grid]
+  R --> E[Alignment report + hashes]
+

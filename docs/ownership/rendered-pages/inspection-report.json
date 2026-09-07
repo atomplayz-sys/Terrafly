@@ -1,0 +1,419 @@
+{
+  "atlas": {
+    "file": "TerraFly_Source_to_System_Atlas.pdf",
+    "pages": 33,
+    "pages_detail": [
+      {
+        "page": 1,
+        "text_chars": 444,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 2,
+        "text_chars": 4948,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 3,
+        "text_chars": 1239,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 4,
+        "text_chars": 3334,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 5,
+        "text_chars": 3476,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 6,
+        "text_chars": 3184,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 7,
+        "text_chars": 3947,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 8,
+        "text_chars": 3999,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 9,
+        "text_chars": 3043,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 10,
+        "text_chars": 2891,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 11,
+        "text_chars": 2618,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 12,
+        "text_chars": 2928,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 13,
+        "text_chars": 3396,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 14,
+        "text_chars": 3355,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 15,
+        "text_chars": 2688,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 16,
+        "text_chars": 3132,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 17,
+        "text_chars": 2212,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 18,
+        "text_chars": 1331,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 19,
+        "text_chars": 4576,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 20,
+        "text_chars": 2508,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 21,
+        "text_chars": 3940,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 22,
+        "text_chars": 785,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 23,
+        "text_chars": 2547,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 24,
+        "text_chars": 2486,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 25,
+        "text_chars": 1291,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 26,
+        "text_chars": 489,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 27,
+        "text_chars": 246,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 28,
+        "text_chars": 268,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 29,
+        "text_chars": 173,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 30,
+        "text_chars": 172,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 31,
+        "text_chars": 178,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 32,
+        "text_chars": 179,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 33,
+        "text_chars": 178,
+        "links": 0,
+        "replacement_marks": 0
+      }
+    ],
+    "links": [],
+    "blank_pages": [],
+    "unique_external_links": 0
+  },
+  "bootcamp": {
+    "file": "TerraFly_Zero_to_Ownership_Bootcamp.pdf",
+    "pages": 25,
+    "pages_detail": [
+      {
+        "page": 1,
+        "text_chars": 456,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 2,
+        "text_chars": 3411,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 3,
+        "text_chars": 2417,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 4,
+        "text_chars": 3041,
+        "links": 5,
+        "replacement_marks": 16
+      },
+      {
+        "page": 5,
+        "text_chars": 3549,
+        "links": 7,
+        "replacement_marks": 21
+      },
+      {
+        "page": 6,
+        "text_chars": 3380,
+        "links": 8,
+        "replacement_marks": 21
+      },
+      {
+        "page": 7,
+        "text_chars": 3132,
+        "links": 7,
+        "replacement_marks": 24
+      },
+      {
+        "page": 8,
+        "text_chars": 3085,
+        "links": 7,
+        "replacement_marks": 21
+      },
+      {
+        "page": 9,
+        "text_chars": 3199,
+        "links": 6,
+        "replacement_marks": 18
+      },
+      {
+        "page": 10,
+        "text_chars": 3003,
+        "links": 1,
+        "replacement_marks": 0
+      },
+      {
+        "page": 11,
+        "text_chars": 3504,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 12,
+        "text_chars": 2594,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 13,
+        "text_chars": 3022,
+        "links": 0,
+        "replacement_marks": 11
+      },
+      {
+        "page": 14,
+        "text_chars": 3537,
+        "links": 0,
+        "replacement_marks": 24
+      },
+      {
+        "page": 15,
+        "text_chars": 3227,
+        "links": 0,
+        "replacement_marks": 14
+      },
+      {
+        "page": 16,
+        "text_chars": 611,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 17,
+        "text_chars": 3359,
+        "links": 0,
+        "replacement_marks": 3
+      },
+      {
+        "page": 18,
+        "text_chars": 3220,
+        "links": 0,
+        "replacement_marks": 2
+      },
+      {
+        "page": 19,
+        "text_chars": 1735,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 20,
+        "text_chars": 4580,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 21,
+        "text_chars": 2512,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 22,
+        "text_chars": 493,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 23,
+        "text_chars": 250,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 24,
+        "text_chars": 272,
+        "links": 0,
+        "replacement_marks": 0
+      },
+      {
+        "page": 25,
+        "text_chars": 177,
+        "links": 0,
+        "replacement_marks": 0
+      }
+    ],
+    "links": [
+      "https://cs50.harvard.edu/python/",
+      "https://docs.python.org/3/tutorial/",
+      "https://numpy.org/doc/stable/user/absolute_beginners.html",
+      "https://docs.opencv.org/4.x/d2/d96/tutorial_py_table_of_contents_imgproc.html",
+      "https://www.youtube.com/watch?v=aircAruvnKk",
+      "https://docs.pytorch.org/tutorials/beginner/basics/intro.html",
+      "https://docs.pytorch.org/tutorials/recipes/recipes/amp_recipe.html",
+      "https://huggingface.co/docs/transformers/tasks/monocular_depth_estimation",
+      "https://depth-anything-v2.github.io/",
+      "https://github.com/DepthAnything/Depth-Anything-V2",
+      "https://huggingface.co/depth-anything/Depth-Anything-V2-Large-hf",
+      "https://www.youtube.com/watch?v=vGU4UqhHhAA",
+      "https://opentopography.org/node/3375",
+      "https://docs.qgis.org/3.44/en/docs/gentle_gis_introduction/index.html",
+      "https://documentation.dataspace.copernicus.eu/Applications/Browser.html",
+      "https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/S2L2A.html",
+      "https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Process/Examples/S2L2A.html",
+      "https://www.earthdata.nasa.gov/data/instruments/srtm",
+      "https://rasterio.readthedocs.io/en/stable/quickstart.html",
+      "https://vdatum.noaa.gov/docs/datums.html",
+      "https://fastapi.tiangolo.com/tutorial/",
+      "https://fastapi.tiangolo.com/tutorial/request-files/",
+      "https://docs.pydantic.dev/latest/concepts/models/",
+      "https://react.dev/learn",
+      "https://www.typescriptlang.org/docs/handbook/typescript-from-scratch.html",
+      "https://threejs.org/manual/en/fundamentals.html",
+      "https://threejs.org/manual/en/custom-buffergeometry.html",
+      "https://github.khronos.org/glTF-Tutorials/gltfTutorial/",
+      "https://www.youtube.com/watch?v=7ArmBVF2dCs",
+      "https://www.youtube.com/watch?v=2AQKmw14mHM",
+      "https://scikit-learn.org/stable/modules/cross_validation.html",
+      "https://scikit-learn.org/stable/common_pitfalls.html",
+      "https://scikit-learn.org/stable/modules/model_evaluation.html",
+      "https://www.grss-ieee.org/community/technical-committees/2023-ieee-grss-data-fusion-contest/",
+      "https://huggingface.co/docs/hub/model-cards",
+      "https://about.google/brand-resource-center/products-and-services/geo-guidelines/",
+      "https://creativecommons.org/share-your-work/cclicenses/",
+      "https://docs.pytest.org/en/stable/getting-started.html",
+      "https://vitest.dev/guide/",
+      "https://www.nist.gov/publications/secure-hash-standard",
+      "https://browser.dataspace.copernicus.eu/"
+    ],
+    "blank_pages": [],
+    "unique_external_links": 41
+  },
+  "contact_sheets": [
+    "C:\\Users\\USER\\Documents\\Codex\\2026-08-27\\le\\outputs\\TerraFly-measured-terrain-2026-08-27\\TerraFly_FINAL_WINDOWS\\docs\\ownership\\rendered-pages\\atlas-v2-contact-01.png",
+    "C:\\Users\\USER\\Documents\\Codex\\2026-08-27\\le\\outputs\\TerraFly-measured-terrain-2026-08-27\\TerraFly_FINAL_WINDOWS\\docs\\ownership\\rendered-pages\\atlas-v2-contact-02.png",
+    "C:\\Users\\USER\\Documents\\Codex\\2026-08-27\\le\\outputs\\TerraFly-measured-terrain-2026-08-27\\TerraFly_FINAL_WINDOWS\\docs\\ownership\\rendered-pages\\atlas-v2-contact-03.png",
+    "C:\\Users\\USER\\Documents\\Codex\\2026-08-27\\le\\outputs\\TerraFly-measured-terrain-2026-08-27\\TerraFly_FINAL_WINDOWS\\docs\\ownership\\rendered-pages\\atlas-v2-contact-04.png",
+    "C:\\Users\\USER\\Documents\\Codex\\2026-08-27\\le\\outputs\\TerraFly-measured-terrain-2026-08-27\\TerraFly_FINAL_WINDOWS\\docs\\ownership\\rendered-pages\\bootcamp-v2-contact-01.png",
+    "C:\\Users\\USER\\Documents\\Codex\\2026-08-27\\le\\outputs\\TerraFly-measured-terrain-2026-08-27\\TerraFly_FINAL_WINDOWS\\docs\\ownership\\rendered-pages\\bootcamp-v2-contact-02.png",
+    "C:\\Users\\USER\\Documents\\Codex\\2026-08-27\\le\\outputs\\TerraFly-measured-terrain-2026-08-27\\TerraFly_FINAL_WINDOWS\\docs\\ownership\\rendered-pages\\bootcamp-v2-contact-03.png"
+  ]
+}

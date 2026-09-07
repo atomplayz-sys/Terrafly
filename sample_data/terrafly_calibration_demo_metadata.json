@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "purpose": "TerraFly calibration software demonstration only",
+  "scientific_warning": "The reference was derived from the model result and is not surveyed ground truth or model-accuracy evidence.",
+  "source_image": "terrafly_synthetic_aerial.png",
+  "source_image_sha256": "b3edde0a3336da667ea23b0a61eac4623a53211d140b2e4a2bcaaf6d0aa77cb0",
+  "input_geotiff": "terrafly_calibration_demo_input.tif",
+  "input_geotiff_sha256": "f3d2a85c934434ba3f19196a6d3357eee2b6be4d7cc412631edea0ac11e62091",
+  "reference_geotiff": "terrafly_calibration_demo_reference.tif",
+  "reference_geotiff_sha256": "64b22294ad5200a3659f7ee96e6b9b4924e3609791e7f545c3b3f0c00dd41e0b",
+  "model_id": "depth-anything/Depth-Anything-V2-Large-hf",
+  "model_revision": "7581137eff8d4e94f6e796d3baea0e9fa79b22d2",
+  "device_used_to_generate": "cuda",
+  "known_relation": {
+    "equation": "synthetic_elevation_m = scale * relative_surface + offset",
+    "scale": 40.0,
+    "offset": 100.0
+  },
+  "fit_outliers": "Twelve training-only synthetic outliers are injected to exercise robust fitting."
+}

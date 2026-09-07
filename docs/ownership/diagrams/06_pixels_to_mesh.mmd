@@ -1,0 +1,14 @@
+flowchart LR
+  H[Height pixels] --> V[Vertices]
+  V --> I[Triangle indices]
+  V --> N[Normals]
+  X[Optical image] --> U[UV coordinates + texture]
+  I --> G[GLB / Three.js mesh]
+  N --> G
+  U --> G
+  G --> C[Orbit / first-person camera]
+  G --> R[Raycast click]
+  R --> P[Pixel coordinate]
+  P --> M[Relative or metric bilinear sample]
+  M --> A[A/B elevation difference, distance, slope]
+

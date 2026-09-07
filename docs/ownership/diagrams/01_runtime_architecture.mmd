@@ -1,0 +1,17 @@
+flowchart LR
+  U[Operator in browser] --> A[React App.tsx]
+  A --> H[api.ts HTTP helpers]
+  H --> F[FastAPI main.py]
+  F --> J[JobStore jobs.py]
+  F --> P[Photo worker pipeline.py]
+  F --> T[DEM worker terrain.py]
+  F --> C[Calibration calibration.py]
+  P --> M[DAV2 adapter]
+  P --> R[Artifact writer]
+  T --> R
+  C --> R
+  R --> E[Job artifacts + hashes]
+  J --> A
+  E --> V[SurfaceViewer.tsx]
+  V --> U
+
